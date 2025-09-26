@@ -205,3 +205,15 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Additional
+.env
+.vscode
+__pycache__
+.pytest_cache
+.venv
+dist
+config.toml
+code/langgraph-graph-rag/.DS_Store
+code/local_monitoring/.DS_Store
+code/.DS_Store
