@@ -217,3 +217,4 @@ config.toml
 code/langgraph-graph-rag/.DS_Store
 code/local_monitoring/.DS_Store
 code/.DS_Store
+.DS_Store

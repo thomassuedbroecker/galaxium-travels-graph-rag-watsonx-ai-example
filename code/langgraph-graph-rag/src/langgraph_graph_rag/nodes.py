@@ -32,8 +32,7 @@ def graph_conf():
         "NEO4J_URI" : os.getenv('NEO4J_URI'),
         "NEO4J_USERNAME" : os.getenv('NEO4J_USERNAME'),
         "NEO4J_PASSWORD" : os.getenv('NEO4J_PASSWORD'),
-        "NEO4J_DATABASE" : os.getenv('NEO4J_DATABASE'),
-        "USE_SECRET_MANAGER": os.getenv('USE_SECRET_MANAGER')
+        "NEO4J_DATABASE" : os.getenv('NEO4J_DATABASE')
     }
 
 class AgentState(TypedDict):
@@ -77,35 +76,32 @@ class GraphNodes:
             model_id=embedding_model_id, watsonx_client=api_client
         )
 
-        # Neo4j        
-        if graph_conf()['USE_SECRET_MANAGER'] == "false":
-            self.graph_url=graph_conf()['NEO4J_URI']
-            self.graph_username=graph_conf()['NEO4J_USERNAME']
-            self.graph_password=graph_conf()['NEO4J_PASSWORD']
-            self.graph_database=graph_conf()['NEO4J_DATABASE']
+        # Neo4j
+        if os.getenv('NEO4J_URI') and os.getenv('NEO4J_USERNAME') and os.getenv('NEO4J_PASSWORD'):
             self.configured=True
-        else:
-            self.configured=False
-            self.graph_url=None
-            self.graph_username=None
-            self.graph_password=None
-            self.graph_database=None
-
-        if (self.configured == True):
+            print(f"***Log: Neo4j configured using env variables")
+            self.graph_url = os.getenv('NEO4J_URI')
+            self.graph_username = os.getenv('NEO4J_USERNAME')
+            self.graph_password = os.getenv('NEO4J_PASSWORD')
+            self.graph_database = os.getenv('NEO4J_DATABASE')
+            print(f"***Log: - url: {self.graph_url}")
+            print(f"***Log: - username: {self.graph_username}")
+            #print(f"***Log: - password: {self.graph_password}")
+            print(f"***Log: - database: {self.graph_database}")  
             self.graph = Neo4jGraph(
-                url=self.graph_url,
-                username=self.graph_username,
-                password=self.graph_password,
-                database=self.graph_database,
+                    url=self.graph_url,
+                    username=self.graph_username,
+                    password=self.graph_password,
+                    database=self.graph_database,
             )
             self.vector_index = Neo4jVector.from_existing_index(
-                graph=self.graph,
-                embedding=embedding_func,
-                index_name="vector",
-                keyword_index_name="keyword",
-                search_type="hybrid",
-                node_label="Document",
-                embedding_node_property="embedding",
+                    graph=self.graph,
+                    embedding=embedding_func,
+                    index_name="vector",
+                    keyword_index_name="keyword",
+                    search_type="hybrid",
+                    node_label="Document",
+                    embedding_node_property="embedding",
             )
         else:
             self.vector_index = None
