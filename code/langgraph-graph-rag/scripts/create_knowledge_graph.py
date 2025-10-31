@@ -25,8 +25,11 @@ load_dotenv(dotenv_path= enviornment_path)
 # Model ids
 WATSONX_MODEL_ID = os.environ.get("WATSONX_MODEL_ID")
 WATSONX_EMBEDDING_MODEL_ID = os.environ.get("WATSONX_EMBEDDING_MODEL_ID")
+
+# Graph transformer options
 USE_PROMPT=os.environ.get("USE_PROMPT")
 USE_ADDITIONAL_INSTRUCTIONS=os.environ.get("USE_ADDITIONAL_INSTRUCTIONS")
+USE_NODES_RELATION_DEFINITIONS=os.environ.get("USE_NODES_RELATION_DEFINITIONS")
 
 # Define APIClient using env variables
 print(f"***Log: Define APIClient using env variables")
@@ -168,20 +171,36 @@ if __name__ == "__main__":
 
     if USE_PROMPT.lower() == 'true':
         print(f"***Log: - using prompt template for graph transformer")
-        llm_transformer = LLMGraphTransformer(llm=llm, 
-                                          allowed_nodes=allowed_nodes,  
-                                          allowed_relationships=allowed_relationships, 
+        print(f"***Log: - using additional instructions for graph transformer")
+        if USE_NODES_RELATION_DEFINITIONS.lower() == 'true':    
+            print(f"***Log: - using nodes and relationship definitions for graph transformer")
+            additional_instructions = additional_instructions + f"\n\n Define the following nodes: {allowed_nodes} \n\n Define the following relationships: {allowed_relationships}"
+            llm_transformer = LLMGraphTransformer(llm=llm, 
                                           strict_mode=False,
                                           prompt=chat_prompt,
-                                          )
-    elif USE_ADDITIONAL_INSTRUCTIONS.lower() == 'true':
-        print(f"***Log: - using additional instructions for graph transformer")
-        llm_transformer = LLMGraphTransformer(llm=llm, 
-                                          allowed_nodes=allowed_nodes,  
-                                          allowed_relationships=allowed_relationships, 
-                                          strict_mode=False,
                                           additional_instructions=additional_instructions,
                                           )
+        else:
+            llm_transformer = LLMGraphTransformer(llm=llm, 
+                                            strict_mode=False,
+                                            prompt=chat_prompt,
+                                            )
+    elif USE_ADDITIONAL_INSTRUCTIONS.lower() == 'true':
+        print(f"***Log: - using additional instructions for graph transformer")
+        if USE_NODES_RELATION_DEFINITIONS.lower() == 'true':
+            print(f"***Log: - using nodes and relationship definitions for graph transformer")
+            additional_instructions = additional_instructions + f"\n\n Define the following nodes: {allowed_nodes} \n\n Define the following relationships: {allowed_relationships}"
+            llm_transformer = LLMGraphTransformer(llm=llm, 
+                                            allowed_nodes=allowed_nodes,  
+                                            allowed_relationships=allowed_relationships, 
+                                            strict_mode=False,
+                                            additional_instructions=additional_instructions,
+                                            )
+        else:
+            llm_transformer = LLMGraphTransformer(llm=llm, 
+                                            strict_mode=False,
+                                            additional_instructions=additional_instructions,
+                                            )
     else:
         print(f"***Log: - no prompt or additional instructions for graph transformer")
         llm_transformer = LLMGraphTransformer(llm=llm, 
@@ -216,11 +235,12 @@ if __name__ == "__main__":
     file.write(f"\n************ Ontology definition *****\n")
     file.write(f"transformer configuration:\n")
     file.write(f"- use_prompt: {USE_PROMPT}\n\n")
-    file.write(f"- system_prompt:\n{system_prompt}\n\n")
+    file.write(f"   - system_prompt:\n{system_prompt}\n\n")
     file.write(f"- use_additional_instructions: {USE_ADDITIONAL_INSTRUCTIONS}\n\n")
-    file.write(f"- additional instructions:\n{additional_instructions}\n\n")
-    file.write(f"- allowed_nodes:\n{allowed_nodes}\n\n")
-    file.write(f"- allowed_relationships:\n{allowed_relationships}\n\n")
+    file.write(f"   - additional instructions:\n{additional_instructions}\n\n")
+    file.write(f"- use_nodes_relation_definitions: {USE_NODES_RELATION_DEFINITIONS}\n\n")
+    file.write(f" - allowed_nodes:\n{allowed_nodes}\n\n")
+    file.write(f" - allowed_relationships:\n{allowed_relationships}\n\n")
     file.write(f"\n************ Generated Graph Data overview***********\n")
     file.write(f"generated_graph_documents_count: {len(graph_documents)}\n")
     file.write(f"chunk size: { chunk_size}\n")
