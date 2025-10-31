@@ -23,9 +23,36 @@ logging.basicConfig(encoding='utf-8', level=logging.DEBUG)
 
 # Local configuration for secrets
 from dotenv import load_dotenv
+import os
+from datetime import datetime
+
 enviornment_path="../../.env"
 load_dotenv(dotenv_path= enviornment_path)
-import os
+
+filename = os.getenv('NEO4J_URI')
+log_path = os.getenv('FILENAME_AGENT_LOG_OUTPUT')
+
+
+def get_timestamp():
+    now = datetime.now()
+    timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
+    return timestamp
+
+timestamp = get_timestamp()
+
+# Create log file for the agent run
+print(f"***Log: Creating runtime log file for agent execution {log_path}")
+filename_output=f"{log_path}/log_agent_execution_{timestamp}.txt"  
+with open(filename_output, 'w') as file:       
+        file.write(f"************ LangGraph Node - Log experiment agent run {timestamp} **********\n")
+        file.close()
+
+def save_runtime_log(filename, message):
+    with open(filename, 'a') as file:       
+        file.write(f"************ LangGraph Node - Log current time {get_timestamp()} **********\n")
+        file.write(f"{message}\n\n")
+        file.close()
+    return
 
 def graph_conf():
     return {
@@ -142,6 +169,7 @@ class GraphNodes:
                 "Otherwise, respond with 'final_answer'."
             )
         )
+        save_runtime_log(filename_output, f"***Log: Agent - system_message: {system_message.content}")
         user_query = state["messages"][-1].content
         human_message = HumanMessage(content=f"User query: {user_query}")
         llm_with_tool = self.llm_no_stream.bind_tools([Router], tool_choice="Router")
@@ -173,7 +201,9 @@ class GraphNodes:
                 },
             ]
         )
-
+        save_runtime_log(filename_output, f"***Log: _retrieve_entities - question:\n {question}") 
+        save_runtime_log(filename_output, f"***Log: _retrieve_entities - chat_prompt:\n {chat_prompt}")
+        
         entity_chain = chat_prompt | self.llm.with_structured_output(Entities)
 
         return entity_chain.invoke({"question": question}).names
@@ -193,6 +223,7 @@ class GraphNodes:
         for word in words[:-1]:
             full_text_query += f" {word}~2 AND"
         full_text_query += f" {words[-1]}~2"
+        save_runtime_log(filename_output, f"***Log: _generate_full_text_query - full_text_query:\n {full_text_query}")
         return full_text_query.strip()
 
     def graph_search(self, state: AgentState) -> dict:
@@ -224,7 +255,9 @@ class GraphNodes:
                 {"query": self._generate_full_text_query(entity)},
             )
             result += "\n".join([el["output"] for el in response]) + "\n"
-
+        
+        save_runtime_log(filename_output, f"***Log: graph_search - result:\n {result}")
+        
         return {
             "structured_data": result,
         }
@@ -253,6 +286,7 @@ class GraphNodes:
 {state["structured_data"]}
 Unstructured data:\n{unstructured_context}
 """
+        save_runtime_log(filename_output, f"***Log: unstructured_retriever - context_prompt:\n {context_prompt}")
         return {
             "unstructured_data": unstructured_data,
             "messages": [
@@ -292,4 +326,5 @@ Question: {state["question"]}
                 HumanMessage(content=user_prompt),
             ]
         )
+        save_runtime_log(filename_output, f"***Log: generate - response:\n {response.content}")
         return {"messages": [response]}
