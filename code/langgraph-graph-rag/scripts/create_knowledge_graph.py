@@ -128,7 +128,7 @@ if __name__ == "__main__":
     filename_1="./input_data/company_overview.md"
 
     # Example output file
-    filename_output=f"./output_data/company_overview_output_{timestamp}.txt"
+    filename_output=f"./output_data/log_preocessing_company_overview_output_{timestamp}.txt"
     text_1=get_text(filename_1)
 
     # Example prompt
@@ -225,28 +225,31 @@ if __name__ == "__main__":
     file = open(filename_output,'w') 
     file.write(f"******** {timestamp} **********\n")
     file.write(f"************ Models *******************\n")
-    file.write(f"llm model id: {WATSONX_MODEL_ID}\n")
+    file.write(f"llm model id (preprocessing and runtime agent execution): {WATSONX_MODEL_ID}\n")
     file.write(f"embedding model id: {WATSONX_EMBEDDING_MODEL_ID}\n")
     file.write(f"************ Chat configuratoin ********\n")
     file.write(f"llm chat configuration: {llm}\n")
-    file.write(f"\n************ Time *******************\n")
+    file.write(f"\n************ Time preprocessing *******************\n")
     file.write(f"conversion_time in sec: {length}\n")
     file.write(f"conversion_time in minutes: {length/60}\n")
     file.write(f"\n************ Ontology definition *****\n")
     file.write(f"transformer configuration:\n")
-    file.write(f"- use_prompt: {USE_PROMPT}\n\n")
-    file.write(f"   - system_prompt:\n{system_prompt}\n\n")
-    file.write(f"- use_additional_instructions: {USE_ADDITIONAL_INSTRUCTIONS}\n\n")
-    file.write(f"   - additional instructions:\n{additional_instructions}\n\n")
+    file.write(f"- use_prompt (preprocessing): {USE_PROMPT}\n\n")
+    if (USE_PROMPT.lower() == 'true'):
+        file.write(f"   - system_prompt:\n{system_prompt}\n\n")
+    file.write(f"- use_additional_instructions (preprocessing): {USE_ADDITIONAL_INSTRUCTIONS}\n\n")
+    if (USE_ADDITIONAL_INSTRUCTIONS.lower() == 'true' or USE_PROMPT.lower() == 'true'):
+        file.write(f"   - additional instructions:\n{additional_instructions}\n\n")
     file.write(f"- use_nodes_relation_definitions: {USE_NODES_RELATION_DEFINITIONS}\n\n")
-    file.write(f" - allowed_nodes:\n{allowed_nodes}\n\n")
-    file.write(f" - allowed_relationships:\n{allowed_relationships}\n\n")
+    if (USE_NODES_RELATION_DEFINITIONS.lower() == 'true'):
+        file.write(f" - allowed_nodes:\n{allowed_nodes}\n\n")
+        file.write(f" - allowed_relationships:\n{allowed_relationships}\n\n")
     file.write(f"\n************ Generated Graph Data overview***********\n")
     file.write(f"generated_graph_documents_count: {len(graph_documents)}\n")
     file.write(f"chunk size: { chunk_size}\n")
     file.write(f"chunk overlap: {overlap}\n")
     file.write(f"chunks: {len(chunks)}\n")
-    file.write(f"\n************ Generated Graph Data ***********\n")
+    file.write(f"\n************ Generated Graph Data Entries***********\n")
  
     for graph_document in graph_documents:
         print(f"****Log: 5.{i} Graph document: \n***\n{graph_document}\n***\n")

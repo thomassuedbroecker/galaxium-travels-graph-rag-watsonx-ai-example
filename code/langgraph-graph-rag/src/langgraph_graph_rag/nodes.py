@@ -169,7 +169,7 @@ class GraphNodes:
                 "Otherwise, respond with 'final_answer'."
             )
         )
-        save_runtime_log(filename_output, f"***Log: Agent - system_message: {system_message.content}")
+        save_runtime_log(filename_output, f"***Log: Agent - system_message including `knowledge_graph_description`:\n{system_message.content}\n")
         user_query = state["messages"][-1].content
         human_message = HumanMessage(content=f"User query: {user_query}")
         llm_with_tool = self.llm_no_stream.bind_tools([Router], tool_choice="Router")
@@ -201,8 +201,8 @@ class GraphNodes:
                 },
             ]
         )
-        save_runtime_log(filename_output, f"***Log: _retrieve_entities - question:\n {question}") 
-        save_runtime_log(filename_output, f"***Log: _retrieve_entities - chat_prompt:\n {chat_prompt}")
+        save_runtime_log(filename_output, f"***Log: _retrieve_entities - question:\n{question}\n") 
+        save_runtime_log(filename_output, f"***Log: _retrieve_entities - chat_prompt:\n{chat_prompt}\n")
         
         entity_chain = chat_prompt | self.llm.with_structured_output(Entities)
 
@@ -237,11 +237,8 @@ class GraphNodes:
         """
         question = state["question"]
         entities = self._retrieve_entities(question)
-
-        result = ""
-        for entity in entities:
-            response = self.graph.query(
-                """CALL db.index.fulltext.queryNodes('entity', $query, {limit:2})
+        graph_conf_query="""
+        CALL db.index.fulltext.queryNodes('entity', $query, {limit:2})
             YIELD node,score
             CALL () {
               MATCH (node)-[r:!MENTIONS]->(neighbor)
@@ -251,12 +248,19 @@ class GraphNodes:
               RETURN neighbor.id + ' - ' + type(r) + ' -> ' +  node.id AS output
             }
             RETURN output LIMIT 20
-            """,
+        """
+        result = ""
+        save_runtime_log(filename_output, f"***Log: graph_search - query:\n{graph_conf_query}")
+        save_runtime_log(filename_output, f"***Log: graph_search - entities:\n{entities}")
+        for entity in entities:
+            response = self.graph.query(
+                graph_conf_query,
                 {"query": self._generate_full_text_query(entity)},
             )
+            save_runtime_log(filename_output, f"***Log: graph_search - {entity} query:\n{self._generate_full_text_query(entity)}")
             result += "\n".join([el["output"] for el in response]) + "\n"
         
-        save_runtime_log(filename_output, f"***Log: graph_search - result:\n {result}")
+        save_runtime_log(filename_output, f"***Log: graph_search - result:\n{result}")
         
         return {
             "structured_data": result,
