@@ -1,3 +1,8 @@
+# Galaxim Travels a Knowledge GraphRAG example 
+
+The documentation for this repository is in this blog post [`How to Build a Knowledge Graph RAG Agent Locally with Neo4j, LangGraph, and watsonx.ai`](https://suedbroecker.net/2025/09/26/how-to-build-a-knowledge-graph-rag-agent-locally-with-neo4j-langgraph-and-watsonx-ai/).
+
+
 ## Fast start
 
 This is a quick-start document that contains only the main configuration steps, with no additional documentation. For details, please visit the blog post above.
