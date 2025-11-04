@@ -152,6 +152,33 @@ def connect_to_neo4j_graph() -> GraphDatabase.driver:
    
     return graph
 
+def get_all_node_names(graph: GraphDatabase.driver) -> list[str]:
+    """
+    Retrieves all nodes and attempts to return a 'name' or 'title' property.
+    Returns a list of dictionaries, including the node's labels and available names/titles.
+    """
+    with graph.session() as session:
+        # Match all nodes (n) and return their 'name' (if exists), 'title' (if exists), and labels
+        result = session.execute_read(
+            lambda tx: tx.run(
+                """
+                MATCH (n) 
+                RETURN n.name AS name, n.title AS title, labels(n) AS labels
+                """
+            ).data()
+        )
+        
+        node_details = []
+        for record in result:
+            details = {
+                'labels': record['labels'],
+                'name': record['name'],
+                'title': record['title']
+            }
+            node_details.append(details)
+            
+        return node_details
+
 def get_all_node_labels(graph: GraphDatabase.driver) -> list[str]:
     """
     Retrieves a list of all node labels in the database.
@@ -176,7 +203,7 @@ if __name__ == "__main__":
     filename_1="./input_data/company_overview.md"
 
     # Example output file
-    filename_output=f"./output_data/log_prepocessing_company_overview_output_{timestamp}.txt"
+    filename_output=f"./output_data/log_prepocessing_company_overview_output_{timestamp}.md"
     text_1=get_text(filename_1)
 
     # Example prompt
@@ -205,17 +232,25 @@ if __name__ == "__main__":
     
     # Not using prompt template for now
     system_prompt = prompt_text
-    chat_prompt = ChatPromptTemplate([("system", system_prompt)])
-    print(f"***Log: - prompt:\n{chat_prompt}\n\n")
+    if (USE_PROMPT.lower() == 'true'):
+        print(f"***Log: - using prompt template for graph transformer")
+        chat_prompt = ChatPromptTemplate([("system", system_prompt)])
+        print(f"***Log: - prompt:\n{chat_prompt}\n\n")
+    
 
     # Using the additional_instructions parameter instead of prompt template for now
-    additional_instructions = additional_instructions_text
+    if (USE_ADDITIONAL_INSTRUCTIONS.lower() == 'true'):
+        print(f"***Log: - using additional instructions for graph transformer")
+        additional_instructions = additional_instructions_text
+        print(f"***Log: - additional_instructions:\n{additional_instructions_text}\n\n")    
 
     print(f"***Log: 3. Create LLMGraphTransformer with `llm`: ({llm})\n\n")
-    allowed_nodes = ["Company", "Person", "Objective"]
-    print(f"***Log: - allowed nodes: {allowed_nodes}")
-    allowed_relationships = ["RELATED_TO", "ASSOCIATED_WITH", "PART_OF", "MENTIONS", "CHANGES"]
-    print(f"***Log: - allowed relationships: {allowed_relationships}")
+    if (USE_NODES_RELATION_DEFINITIONS.lower() == 'true'):
+        print(f"***Log: - using nodes and relationship definitions for graph transformer")
+        allowed_nodes = ["Company", "Person", "Objective"]
+        print(f"***Log: - allowed nodes: {allowed_nodes}")
+        allowed_relationships = ["RELATED_TO", "ASSOCIATED_WITH", "PART_OF", "MENTIONS", "CHANGES"]
+        print(f"***Log: - allowed relationships: {allowed_relationships}")
 
     # Prompt and additional instructions handling
     if USE_PROMPT.lower() == 'true':
@@ -223,12 +258,12 @@ if __name__ == "__main__":
         print(f"***Log: - using additional instructions for graph transformer")
         if USE_NODES_RELATION_DEFINITIONS.lower() == 'true':    
             print(f"***Log: - using nodes and relationship definitions for graph transformer")
-            additional_instructions = additional_instructions + f"\n\n Define the following nodes: {allowed_nodes} \n\n Define the following relationships: {allowed_relationships}"
             llm_transformer = LLMGraphTransformer(llm=llm, 
-                                          strict_mode=False,
-                                          prompt=chat_prompt,
-                                          additional_instructions=additional_instructions,
-                                          )
+                                                  strict_mode=False,
+                                                  prompt=chat_prompt,
+                                                  allowed_nodes=allowed_nodes,
+                                                  allowed_relationships=allowed_relationships,
+                                                )
         else:
             llm_transformer = LLMGraphTransformer(llm=llm, 
                                             strict_mode=False,
@@ -237,13 +272,11 @@ if __name__ == "__main__":
     elif USE_ADDITIONAL_INSTRUCTIONS.lower() == 'true':
         print(f"***Log: - using additional instructions for graph transformer")
         if USE_NODES_RELATION_DEFINITIONS.lower() == 'true':
-            print(f"***Log: - using nodes and relationship definitions for graph transformer")
-            additional_instructions = additional_instructions + f"\n\n Define the following nodes: {allowed_nodes} \n\n Define the following relationships: {allowed_relationships}"
-            llm_transformer = LLMGraphTransformer(llm=llm, 
+             llm_transformer = LLMGraphTransformer(llm=llm, 
                                             allowed_nodes=allowed_nodes,  
                                             allowed_relationships=allowed_relationships, 
                                             strict_mode=False,
-                                            additional_instructions=additional_instructions,
+                                            additional_instructions=additional_instructions_text,
                                             )
         else:
             llm_transformer = LLMGraphTransformer(llm=llm, 
@@ -253,12 +286,8 @@ if __name__ == "__main__":
     else:
         print(f"***Log: - no prompt or additional instructions for graph transformer")
         llm_transformer = LLMGraphTransformer(llm=llm, 
-                                          allowed_nodes=allowed_nodes,  
-                                          allowed_relationships=allowed_relationships, 
-                                          strict_mode=False,
-                                          )
-    
-
+                                              strict_mode=False,
+                                             )
     
     start = time.time()
     print(f"***Log: 4. Start convert to graph documents using the chunks: ({len(chunks)})\n\n")
@@ -272,53 +301,66 @@ if __name__ == "__main__":
 
     # Save report
     file = open(filename_output,'w') 
-    file.write(f"******** {timestamp} **********\n")
+    file.write(f"# Experiment setup {timestamp}\n")
     
-    file.write(f"************ Models *******************\n")
-    file.write(f"llm model id (preprocessing and runtime agent execution): {WATSONX_MODEL_ID}\n")
-    file.write(f"embedding model id: {WATSONX_EMBEDDING_MODEL_ID}\n")
+    file.write(f"## 1. Models\n")
+    file.write("| LLM for preprocessing and runtime agent execution | LLM embedding model |\n")
+    file.write(f"| --- | --- |\n")  
+    file.write(f"| {WATSONX_MODEL_ID} | {WATSONX_EMBEDDING_MODEL_ID} |\n\n")
     
-    file.write(f"************ Chat configuratoin ********\n")
-    file.write(f"llm chat configuration: {llm}\n")
+    file.write(f"## 2. Chat configuration\n")
+    file.write(f"Llm chat configuration:\n```python\n{llm}\n```\n\n")
     
-    file.write(f"\n************ Time preprocessing *******************\n")
-    file.write(f"conversion_time in sec: {length}\n")
-    file.write(f"conversion_time in minutes: {length/60}\n")
+    file.write(f"\n## 3. Time preprocessing\n")
+    file.write("| conversion_time in sec | conversion_time in minutes |\n")
+    file.write(f"| --- | --- |\n")  
+    file.write(f"| {length} | {length/60} |\n\n")
+ 
+    file.write(f"\n## 4. Ontology definition\n\n")
+    file.write(f"Langchain GraphTransformer configuration:\n")
+    file.write("| use_prompt | use_additional_instructions | use_nodes_relation_definitions |\n")
+    file.write(f"| --- | --- | --- |\n")
+    file.write(f"| {USE_PROMPT} | {USE_ADDITIONAL_INSTRUCTIONS} | {USE_NODES_RELATION_DEFINITIONS} |\n\n")
     
-    file.write(f"\n************ Ontology definition *****\n")
-    file.write(f"transformer configuration:\n")
-    file.write(f"- use_prompt (preprocessing): {USE_PROMPT}\n\n")
     if (USE_PROMPT.lower() == 'true'):
-        file.write(f"   - system_prompt:\n{system_prompt}\n\n")
-    file.write(f"- use_additional_instructions (preprocessing): {USE_ADDITIONAL_INSTRUCTIONS}\n\n")
+        file.write(f"   - system_prompt:\n```python\n{system_prompt}\n```\n\n")
     if (USE_ADDITIONAL_INSTRUCTIONS.lower() == 'true' or USE_PROMPT.lower() == 'true'):
-        file.write(f"   - additional instructions:\n{additional_instructions}\n\n")
-    file.write(f"- use_nodes_relation_definitions: {USE_NODES_RELATION_DEFINITIONS}\n\n")
+        file.write(f"   - additional instructions:\n```python\n{additional_instructions_text}\n```\n\n")
     if (USE_NODES_RELATION_DEFINITIONS.lower() == 'true'):
-        file.write(f" - allowed_nodes:\n{allowed_nodes}\n\n")
-        file.write(f" - allowed_relationships:\n{allowed_relationships}\n\n")
+        file.write(f" - allowed_nodes:\n```python\n{allowed_nodes}\n```\n\n")
+        file.write(f" - allowed_relationships:\n```python\n{allowed_relationships}\n```\n\n")
     
-    file.write(f"\n************ Generated Graph Data overview***********\n")
+    file.write(f"\n## 5. Generated Graph Data overview\n")
     file.write(f"generated_graph_documents_count: {len(graph_documents)}\n")
     file.write(f"| chunk size | chunks | chunk overlap |\n")
     file.write(f"| --- | --- | --- |\n")
     file.write(f"| {chunk_size} | {overlap}| {len(chunks)} |\n\n")
+    
+    # Connect to Neo4j graph to get overview data    
     graph = connect_to_neo4j_graph()
-    
-    file.write(f"\n*********** List of generated node lables\n")
-    file.write(f"{get_all_node_labels(graph)}\n\n")
-    
-    file.write(f"\n*********** List of generated relationship types\n")
-    file.write(f"{get_all_relationship_types(graph)}\n\n")
-    
-    file.write(f"\n************ Generated Graph Data Entries***********\n")
 
+    file.write(f"\n## 6. List of generated node labels\n")
+    file.write(f"```python\n{get_all_node_labels(graph)}\n```\n\n")
+    
+    file.write(f"\n## 7. List of generated relationship types\n")
+    file.write(f"```python\n{get_all_relationship_types(graph)}\n```\n\n")
+
+    file.write(f"\n## 8. List of generated nodes\n")
+    file.write(f"```python\n{get_all_node_names(graph)}\n```\n\n")
+     
+    file.write(f"\n## 9. Generated Graph Data Entries\n")
+    file.write(f"\n```python\n")
     for graph_document in graph_documents:
         print(f"****Log: 5.{i} Graph document: \n***\n{graph_document}\n***\n")
         i = i + 1
-        file.write(f"{graph_document}\n")
+        file.write(f"{graph_document}\n\n")
+    file.write(f"\n```\n")
     file.close()
     neo4j_graph = create_knowledge_graph(graph_documents=graph_documents)
     print(f"***Log: 6. graph result:\n{neo4j_graph}\n")
     print(f"***Log: 7. Create the vector index from the graph embedding model:{WATSONX_EMBEDDING_MODEL_ID}\n\n")
     create_vector_index_from_graph(neo4j_graph)
+    print(f"***Log: Finished knowledge graph creation successfully. \n\n")
+    print(f"***Log: Open Neo4j graph at: {graph_conf()['NEO4J_URI']} \n\n")
+    print(f"***Log: Output log file: {filename_output}\n\n")
+

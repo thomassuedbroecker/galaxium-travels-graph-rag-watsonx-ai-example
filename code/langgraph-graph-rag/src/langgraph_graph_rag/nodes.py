@@ -41,7 +41,7 @@ def get_timestamp():
 timestamp = get_timestamp()
 
 # Create log file for the agent run
-print(f"***Log: Creating runtime log file for agent execution {log_path}")
+print(f"***Log {get_timestamp()}: Creating runtime log file for agent execution {log_path}")
 filename_output=f"{log_path}/log_agent_execution_{timestamp}.txt"  
 with open(filename_output, 'w') as file:       
         file.write(f"************ LangGraph Node - Log experiment agent run {timestamp} **********\n")
@@ -106,15 +106,15 @@ class GraphNodes:
         # Neo4j
         if os.getenv('NEO4J_URI') and os.getenv('NEO4J_USERNAME') and os.getenv('NEO4J_PASSWORD'):
             self.configured=True
-            print(f"***Log: Neo4j configured using env variables")
+            print(f"***Log {get_timestamp()}: Neo4j configured using env variables")
             self.graph_url = os.getenv('NEO4J_URI')
             self.graph_username = os.getenv('NEO4J_USERNAME')
             self.graph_password = os.getenv('NEO4J_PASSWORD')
             self.graph_database = os.getenv('NEO4J_DATABASE')
-            print(f"***Log: - url: {self.graph_url}")
-            print(f"***Log: - username: {self.graph_username}")
-            #print(f"***Log: - password: {self.graph_password}")
-            print(f"***Log: - database: {self.graph_database}")  
+            print(f"***Log {get_timestamp()}: - url: {self.graph_url}")
+            print(f"***Log {get_timestamp()}: - username: {self.graph_username}")
+            #print(f"***Log {get_timestamp()}: - password: {self.graph_password}")
+            print(f"***Log {get_timestamp()}: - database: {self.graph_database}")  
             self.graph = Neo4jGraph(
                     url=self.graph_url,
                     username=self.graph_username,
@@ -201,8 +201,8 @@ class GraphNodes:
                 },
             ]
         )
-        save_runtime_log(filename_output, f"***Log: _retrieve_entities - question:\n{question}\n") 
-        save_runtime_log(filename_output, f"***Log: _retrieve_entities - chat_prompt:\n{chat_prompt}\n")
+        save_runtime_log(filename_output, f"***Log {get_timestamp()}: _retrieve_entities - question:\n{question}\n") 
+        save_runtime_log(filename_output, f"***Log {get_timestamp()}: _retrieve_entities - chat_prompt:\n{chat_prompt}\n")
         
         entity_chain = chat_prompt | self.llm.with_structured_output(Entities)
 
@@ -223,7 +223,7 @@ class GraphNodes:
         for word in words[:-1]:
             full_text_query += f" {word}~2 AND"
         full_text_query += f" {words[-1]}~2"
-        save_runtime_log(filename_output, f"***Log: _generate_full_text_query - full_text_query:\n {full_text_query}")
+        save_runtime_log(filename_output, f"***Log {get_timestamp()}: _generate_full_text_query - full_text_query:\n {full_text_query}")
         return full_text_query.strip()
 
     def graph_search(self, state: AgentState) -> dict:
@@ -250,17 +250,17 @@ class GraphNodes:
             RETURN output LIMIT 20
         """
         result = ""
-        save_runtime_log(filename_output, f"***Log: graph_search - query:\n{graph_conf_query}")
-        save_runtime_log(filename_output, f"***Log: graph_search - entities:\n{entities}")
+        save_runtime_log(filename_output, f"***Log {get_timestamp()}: graph_search - query:\n{graph_conf_query}")
+        save_runtime_log(filename_output, f"***Log {get_timestamp()}: graph_search - entities:\n{entities}")
         for entity in entities:
             response = self.graph.query(
                 graph_conf_query,
                 {"query": self._generate_full_text_query(entity)},
             )
-            save_runtime_log(filename_output, f"***Log: graph_search - {entity} query:\n{self._generate_full_text_query(entity)}")
+            save_runtime_log(filename_output, f"***Log {get_timestamp()}: graph_search - {entity} query:\n{self._generate_full_text_query(entity)}")
             result += "\n".join([el["output"] for el in response]) + "\n"
         
-        save_runtime_log(filename_output, f"***Log: graph_search - result:\n{result}")
+        save_runtime_log(filename_output, f"***Log {get_timestamp()}: graph_search - result:\n{result}")
         
         return {
             "structured_data": result,
@@ -290,7 +290,7 @@ class GraphNodes:
 {state["structured_data"]}
 Unstructured data:\n{unstructured_context}
 """
-        save_runtime_log(filename_output, f"***Log: unstructured_retriever - context_prompt:\n {context_prompt}")
+        save_runtime_log(filename_output, f"***Log {get_timestamp()}: unstructured_retriever - context_prompt:\n {context_prompt}")
         return {
             "unstructured_data": unstructured_data,
             "messages": [
@@ -330,5 +330,5 @@ Question: {state["question"]}
                 HumanMessage(content=user_prompt),
             ]
         )
-        save_runtime_log(filename_output, f"***Log: generate - response:\n {response.content}")
+        save_runtime_log(filename_output, f"***Log {get_timestamp()}: generate - response:\n {response.content}")
         return {"messages": [response]}
