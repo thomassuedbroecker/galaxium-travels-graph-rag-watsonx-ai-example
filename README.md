@@ -60,7 +60,7 @@ export LANGFUSE_SECRET_KEY=YOUR_KEY
 export LANGFUSE_HOST=http://localhost:3000
 
 # Filename runtime log output
-export FILENAME_AGENT_LOG_OUTPUT="<INSERT_YOUR_ABSOLUT_FOLDER_PATH>/scripts/output_data"
+export FILENAME_AGENT_LOG_OUTPUT="../../scripts/output_data"
 
 
 # LangChain GraphTransformer
@@ -161,7 +161,7 @@ bash run_convert_pdf_to_markdown.sh
 
 ```sh
 cd code/langgraph-graph-rag/scripts
-bash create_graph.sh
+bash run_create_graph.sh
 ```
 
 The bash execution will generate a log file in the output folder.

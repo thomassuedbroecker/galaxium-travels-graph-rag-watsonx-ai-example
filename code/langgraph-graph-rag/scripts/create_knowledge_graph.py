@@ -8,6 +8,7 @@ from langchain_experimental.graph_transformers import LLMGraphTransformer
 from langchain_neo4j.graphs.graph_document import GraphDocument
 from langchain_core.documents import Document
 from langchain_neo4j import Neo4jGraph, Neo4jVector
+from neo4j import GraphDatabase
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.prompts import ChatPromptTemplate
 
@@ -117,6 +118,53 @@ def get_timestamp():
     timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
     return timestamp
 
+def get_all_relationship_types(graph: GraphDatabase.driver) -> list[str]:
+    """
+    Retrieves a list of all relationship types in the database.
+    """
+    with graph.session() as session:
+        # The Cypher query calls the built-in stored procedure
+        result = session.execute_read(
+            lambda tx: tx.run("CALL db.relationshipTypes() YIELD relationshipType RETURN relationshipType").data()
+        )
+        # Extract the relationship names into a Python list
+        relationship_types = [record['relationshipType'] for record in result]
+        return relationship_types
+
+def graph_conf():
+    return {
+        "NEO4J_URI" : os.getenv('NEO4J_URI'),
+        "NEO4J_USERNAME" : os.getenv('NEO4J_USERNAME'),
+        "NEO4J_PASSWORD" : os.getenv('NEO4J_PASSWORD'),
+        "NEO4J_DATABASE" : os.getenv('NEO4J_DATABASE')
+    }
+
+def connect_to_neo4j_graph() -> GraphDatabase.driver:
+    """
+    Connects to the Neo4j graph database using environment variables.
+    """
+    URI = graph_conf()['NEO4J_URI'] 
+    AUTH = (graph_conf()['NEO4J_USERNAME'], graph_conf()['NEO4J_PASSWORD'])
+    graph = GraphDatabase.driver(URI, auth=AUTH)
+    # Verify connectivity (optional)
+    graph.verify_connectivity()
+    print("Connection established successfully.")
+   
+    return graph
+
+def get_all_node_labels(graph: GraphDatabase.driver) -> list[str]:
+    """
+    Retrieves a list of all node labels in the database.
+    """
+    with graph.session() as session:
+        # The Cypher query calls the built-in stored procedure
+        result = session.execute_read(
+            lambda tx: tx.run("CALL db.labels() YIELD label RETURN label").data()
+        )
+        # Extract the label names into a Python list
+        node_labels = [record['label'] for record in result]
+    return node_labels
+
 ###############################################
 # Main script execution
 
@@ -128,7 +176,7 @@ if __name__ == "__main__":
     filename_1="./input_data/company_overview.md"
 
     # Example output file
-    filename_output=f"./output_data/log_preocessing_company_overview_output_{timestamp}.txt"
+    filename_output=f"./output_data/log_prepocessing_company_overview_output_{timestamp}.txt"
     text_1=get_text(filename_1)
 
     # Example prompt
@@ -169,6 +217,7 @@ if __name__ == "__main__":
     allowed_relationships = ["RELATED_TO", "ASSOCIATED_WITH", "PART_OF", "MENTIONS", "CHANGES"]
     print(f"***Log: - allowed relationships: {allowed_relationships}")
 
+    # Prompt and additional instructions handling
     if USE_PROMPT.lower() == 'true':
         print(f"***Log: - using prompt template for graph transformer")
         print(f"***Log: - using additional instructions for graph transformer")
@@ -224,14 +273,18 @@ if __name__ == "__main__":
     # Save report
     file = open(filename_output,'w') 
     file.write(f"******** {timestamp} **********\n")
+    
     file.write(f"************ Models *******************\n")
     file.write(f"llm model id (preprocessing and runtime agent execution): {WATSONX_MODEL_ID}\n")
     file.write(f"embedding model id: {WATSONX_EMBEDDING_MODEL_ID}\n")
+    
     file.write(f"************ Chat configuratoin ********\n")
     file.write(f"llm chat configuration: {llm}\n")
+    
     file.write(f"\n************ Time preprocessing *******************\n")
     file.write(f"conversion_time in sec: {length}\n")
     file.write(f"conversion_time in minutes: {length/60}\n")
+    
     file.write(f"\n************ Ontology definition *****\n")
     file.write(f"transformer configuration:\n")
     file.write(f"- use_prompt (preprocessing): {USE_PROMPT}\n\n")
@@ -244,13 +297,22 @@ if __name__ == "__main__":
     if (USE_NODES_RELATION_DEFINITIONS.lower() == 'true'):
         file.write(f" - allowed_nodes:\n{allowed_nodes}\n\n")
         file.write(f" - allowed_relationships:\n{allowed_relationships}\n\n")
+    
     file.write(f"\n************ Generated Graph Data overview***********\n")
     file.write(f"generated_graph_documents_count: {len(graph_documents)}\n")
-    file.write(f"chunk size: { chunk_size}\n")
-    file.write(f"chunk overlap: {overlap}\n")
-    file.write(f"chunks: {len(chunks)}\n")
+    file.write(f"| chunk size | chunks | chunk overlap |\n")
+    file.write(f"| --- | --- | --- |\n")
+    file.write(f"| {chunk_size} | {overlap}| {len(chunks)} |\n\n")
+    graph = connect_to_neo4j_graph()
+    
+    file.write(f"\n*********** List of generated node lables\n")
+    file.write(f"{get_all_node_labels(graph)}\n\n")
+    
+    file.write(f"\n*********** List of generated relationship types\n")
+    file.write(f"{get_all_relationship_types(graph)}\n\n")
+    
     file.write(f"\n************ Generated Graph Data Entries***********\n")
- 
+
     for graph_document in graph_documents:
         print(f"****Log: 5.{i} Graph document: \n***\n{graph_document}\n***\n")
         i = i + 1
