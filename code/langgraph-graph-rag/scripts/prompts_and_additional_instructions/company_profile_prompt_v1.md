@@ -77,3 +77,6 @@ Adhere to the rules strictly. Non-compliance will result in termination.
 
 # IMPORTANT NOTES
 Don't add any explanation and text!
+
+### Here is your input
+Text: {input}
