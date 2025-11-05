@@ -220,7 +220,7 @@ The following commands are supported:
 
 
 Choose a question or ask one of your own.
- --> Which relation has the Galaxium Travels company?
+ --> Which relations does the Galaxium Travels company have?
 
  ============================== Assistant Message ===============================
 The Galaxium Travels company has the following relations:
