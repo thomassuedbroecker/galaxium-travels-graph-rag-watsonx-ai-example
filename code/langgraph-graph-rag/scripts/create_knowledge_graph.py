@@ -9,6 +9,7 @@ from langchain_neo4j.graphs.graph_document import GraphDocument
 from langchain_core.documents import Document
 from langchain_neo4j import Neo4jGraph, Neo4jVector
 from neo4j import GraphDatabase
+from neo4j.exceptions import Neo4jError
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.prompts import ChatPromptTemplate
 
@@ -83,12 +84,8 @@ def get_text(filename):
     return content
 
 def create_knowledge_graph(graph_documents: list[GraphDocument]) -> Neo4jGraph:
-    # By default, url, username and password are read from env variables
-    print(f"***Log: clear the existing graph data")
-    #graph.query("STORAGE MODE IN_MEMORY_ANALYTICAL")
-    #graph.query("DROP GRAPH")
-    #graph.query("STORAGE MODE IN_MEMORY_TRANSACTIONAL")
-    (f"***Log: create_knowledge_graph:\nBy default, url, username and password are read from env variables")
+    # By default, url, username and password are read from env variables   
+    print(f"***Log: create_knowledge_graph:\nBy default, url, username and password are read from env variables")
     graph = Neo4jGraph(refresh_schema=False)
     graph.add_graph_documents(
         graph_documents=graph_documents, baseEntityLabel=True, include_source=True
@@ -122,6 +119,7 @@ def get_all_relationship_types(graph: GraphDatabase.driver) -> list[str]:
     """
     Retrieves a list of all relationship types in the database.
     """
+    print(f"***Log: get_all_relationship_types")
     with graph.session() as session:
         # The Cypher query calls the built-in stored procedure
         result = session.execute_read(
@@ -143,12 +141,17 @@ def connect_to_neo4j_graph() -> GraphDatabase.driver:
     """
     Connects to the Neo4j graph database using environment variables.
     """
+    print(f"***Log: connect_to_neo4j_graph")
     URI = graph_conf()['NEO4J_URI'] 
     AUTH = (graph_conf()['NEO4J_USERNAME'], graph_conf()['NEO4J_PASSWORD'])
-    graph = GraphDatabase.driver(URI, auth=AUTH)
-    # Verify connectivity (optional)
-    graph.verify_connectivity()
-    print("Connection established successfully.")
+    try:
+        graph = GraphDatabase.driver(URI, auth=AUTH)
+        # Verify connectivity (optional)
+        graph.verify_connectivity()
+        print("Connection established successfully.")
+    except Neo4jError as e:
+        print(f"An error occurred while connecting to the Neo4j database: {e}")
+        raise e
    
     return graph
 
@@ -157,40 +160,59 @@ def get_all_node_names(graph: GraphDatabase.driver) -> list[str]:
     Retrieves all nodes and attempts to return a 'name' or 'title' property.
     Returns a list of dictionaries, including the node's labels and available names/titles.
     """
+    print(f"***Log: get_all_node_names")
     with graph.session() as session:
         # Match all nodes (n) and return their 'name' (if exists), 'title' (if exists), and labels
-        result = session.execute_read(
-            lambda tx: tx.run(
-                """
-                MATCH (n) 
-                RETURN n.name AS name, n.title AS title, labels(n) AS labels
-                """
-            ).data()
-        )
-        
-        node_details = []
-        for record in result:
-            details = {
-                'labels': record['labels'],
-                'name': record['name'],
-                'title': record['title']
-            }
-            node_details.append(details)
-            
-        return node_details
+        try:
+            result = session.execute_read(
+                lambda tx: tx.run(
+                    """
+                    MATCH (n) 
+                    RETURN n.name AS name, n.title AS title, labels(n) AS labels
+                    """
+                ).data()
+            )
+
+            result = session.execute_read(
+                lambda tx: tx.run(
+                    """
+                    MATCH (n) 
+                    RETURN n.name AS name, n.title AS title, labels(n) AS labels
+                    """
+                ).data()
+            )
+
+            node_details = []
+            for record in result:
+                details = {
+                    'labels': record['labels'],
+                    'name': record['name'],
+                    'title': record['title']
+                }
+                node_details.append(details)
+                
+            return node_details
+        except Neo4jError as e:
+            print(f"An error occurred while retrieving node names: {e}")
+            raise e
 
 def get_all_node_labels(graph: GraphDatabase.driver) -> list[str]:
     """
     Retrieves a list of all node labels in the database.
     """
+    print(f"***Log: get_all_node_labels")
     with graph.session() as session:
         # The Cypher query calls the built-in stored procedure
-        result = session.execute_read(
-            lambda tx: tx.run("CALL db.labels() YIELD label RETURN label").data()
-        )
-        # Extract the label names into a Python list
-        node_labels = [record['label'] for record in result]
-    return node_labels
+        try:
+            result = session.execute_read(
+                lambda tx: tx.run("CALL db.labels() YIELD label RETURN label").data()
+            )
+            # Extract the label names into a Python list
+            node_labels = [record['label'] for record in result]
+            return node_labels
+        except Neo4jError as e:
+            print(f"An error occurred while retrieving node labels: {e}")
+            raise e 
 
 ###############################################
 # Main script execution
@@ -198,19 +220,26 @@ def get_all_node_labels(graph: GraphDatabase.driver) -> list[str]:
 if __name__ == "__main__":
 
     timestamp =get_timestamp()
-    
+    # Input and output file names
+    file_input_name = "company_overview.md"
+    file_output_name = f"log_knowledge_graph_creation_{file_input_name}_{timestamp}.md"
+    file_prompt_name = "company_profile_prompt_v2.md"
+    file_additional_instructions_name = "company_profile_additional_instructions_v1.md"
+
+    print(f"***Log: Start knowledge graph creation from file: {file_input_name} \n\n")
+
     # Example text
-    filename_1="./input_data/company_overview.md"
+    filename_1=f"./input_data/{file_input_name}"
 
     # Example output file
-    filename_output=f"./output_data/log_prepocessing_company_overview_output_{timestamp}.md"
+    filename_output=f"./output_data/{file_output_name}"
     text_1=get_text(filename_1)
 
     # Example prompt
-    prompt_text=get_text("./prompts_and_additional_instructions/company_profile_prompt.md")
+    prompt_text=get_text(f"./prompts_and_additional_instructions/{file_prompt_name}")
 
     # Example additional_instructions
-    additional_instructions_text=get_text("./prompts_and_additional_instructions/company_profile_additional_instructions.md")
+    additional_instructions_text=get_text(f"./prompts_and_additional_instructions/{file_additional_instructions_name}")
 
     # Example metadata for the graph documents
     metadata_1={"source": filename_1}
@@ -243,8 +272,8 @@ if __name__ == "__main__":
         print(f"***Log: - using additional instructions for graph transformer")
         additional_instructions = additional_instructions_text
         print(f"***Log: - additional_instructions:\n{additional_instructions_text}\n\n")    
-
-    print(f"***Log: 3. Create LLMGraphTransformer with `llm`: ({llm})\n\n")
+    
+    # Using nodes and relationship definitions
     if (USE_NODES_RELATION_DEFINITIONS.lower() == 'true'):
         print(f"***Log: - using nodes and relationship definitions for graph transformer")
         allowed_nodes = ["Company", "Person", "Objective"]
@@ -252,7 +281,7 @@ if __name__ == "__main__":
         allowed_relationships = ["RELATED_TO", "ASSOCIATED_WITH", "PART_OF", "MENTIONS", "CHANGES"]
         print(f"***Log: - allowed relationships: {allowed_relationships}")
 
-    # Prompt and additional instructions handling
+    print(f"***Log: 3. Create LLMGraphTransformer with `llm`: ({llm})\n\n")
     if USE_PROMPT.lower() == 'true':
         print(f"***Log: - using prompt template for graph transformer")
         print(f"***Log: - using additional instructions for graph transformer")
@@ -281,8 +310,15 @@ if __name__ == "__main__":
         else:
             llm_transformer = LLMGraphTransformer(llm=llm, 
                                             strict_mode=False,
-                                            additional_instructions=additional_instructions,
+                                            additional_instructions=additional_instructions_text,
                                             )
+    elif USE_NODES_RELATION_DEFINITIONS.lower() == 'true':
+        print(f"***Log: - using nodes and relationship definitions for graph transformer")
+        llm_transformer = LLMGraphTransformer(llm=llm, 
+                                              allowed_nodes=allowed_nodes,  
+                                              allowed_relationships=allowed_relationships, 
+                                              strict_mode=False,
+                                             )
     else:
         print(f"***Log: - no prompt or additional instructions for graph transformer")
         llm_transformer = LLMGraphTransformer(llm=llm, 
@@ -292,12 +328,17 @@ if __name__ == "__main__":
     start = time.time()
     print(f"***Log: 4. Start convert to graph documents using the chunks: ({len(chunks)})\n\n")
     graph_documents = llm_transformer.convert_to_graph_documents(chunks)
-    
     end = time.time()
     length = end - start
     print(f"***Log: - time to convert in sec: {length} ")   
     print(f"***Log: 5. Create the graph using the grapg documents: ({len(graph_documents)})\n\n")
     i = 1
+
+    # Create the knowledge graph in Neo4j
+    neo4j_graph = create_knowledge_graph(graph_documents=graph_documents)
+    print(f"***Log: 6. graph result:\n{neo4j_graph}\n")
+    print(f"***Log: 7. Create the vector index from the graph embedding model:{WATSONX_EMBEDDING_MODEL_ID}\n\n")
+    create_vector_index_from_graph(neo4j_graph)
 
     # Save report
     file = open(filename_output,'w') 
@@ -323,9 +364,9 @@ if __name__ == "__main__":
     file.write(f"| {USE_PROMPT} | {USE_ADDITIONAL_INSTRUCTIONS} | {USE_NODES_RELATION_DEFINITIONS} |\n\n")
     
     if (USE_PROMPT.lower() == 'true'):
-        file.write(f"   - system_prompt:\n```python\n{system_prompt}\n```\n\n")
-    if (USE_ADDITIONAL_INSTRUCTIONS.lower() == 'true' or USE_PROMPT.lower() == 'true'):
-        file.write(f"   - additional instructions:\n```python\n{additional_instructions_text}\n```\n\n")
+        file.write(f"   - system_prompt ({file_prompt_name}):\n```python\n{system_prompt}\n```\n\n")
+    if (USE_ADDITIONAL_INSTRUCTIONS.lower() == 'true'):
+        file.write(f"   - additional instructions ({file_additional_instructions_name}):\n```python\n{additional_instructions_text}\n```\n\n")
     if (USE_NODES_RELATION_DEFINITIONS.lower() == 'true'):
         file.write(f" - allowed_nodes:\n```python\n{allowed_nodes}\n```\n\n")
         file.write(f" - allowed_relationships:\n```python\n{allowed_relationships}\n```\n\n")
@@ -340,12 +381,15 @@ if __name__ == "__main__":
     graph = connect_to_neo4j_graph()
 
     file.write(f"\n## 6. List of generated node labels\n")
+    file.write(f"- Count:\n{len(get_all_node_labels(graph))}\n")
     file.write(f"```python\n{get_all_node_labels(graph)}\n```\n\n")
     
     file.write(f"\n## 7. List of generated relationship types\n")
+    file.write(f"- Count:\n{len(get_all_relationship_types(graph))}\n")
     file.write(f"```python\n{get_all_relationship_types(graph)}\n```\n\n")
 
     file.write(f"\n## 8. List of generated nodes\n")
+    file.write(f"- Count:\n{len(get_all_node_names(graph))}\n")
     file.write(f"```python\n{get_all_node_names(graph)}\n```\n\n")
      
     file.write(f"\n## 9. Generated Graph Data Entries\n")
@@ -356,11 +400,8 @@ if __name__ == "__main__":
         file.write(f"{graph_document}\n\n")
     file.write(f"\n```\n")
     file.close()
-    neo4j_graph = create_knowledge_graph(graph_documents=graph_documents)
-    print(f"***Log: 6. graph result:\n{neo4j_graph}\n")
-    print(f"***Log: 7. Create the vector index from the graph embedding model:{WATSONX_EMBEDDING_MODEL_ID}\n\n")
-    create_vector_index_from_graph(neo4j_graph)
+
     print(f"***Log: Finished knowledge graph creation successfully. \n\n")
-    print(f"***Log: Open Neo4j graph at: {graph_conf()['NEO4J_URI']} \n\n")
+    print(f"***Log: Open Neo4j graph at: http://localhost:7474/ \n\n")
     print(f"***Log: Output log file: {filename_output}\n\n")
 
