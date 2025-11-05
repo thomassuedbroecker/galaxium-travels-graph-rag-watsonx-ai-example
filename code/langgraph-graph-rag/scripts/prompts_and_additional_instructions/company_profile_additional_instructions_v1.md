@@ -3,7 +3,7 @@ Your task is to analyze and structure information of companies into a knowledge 
 
 ### Example Nodes and Relations Types definitions
 
-1. Identify Core Entities Types for Nodes:
+1. Entities Types for Nodes:
     * Company Name
     * Industry
     * Headquarters Location
@@ -15,7 +15,7 @@ Your task is to analyze and structure information of companies into a knowledge 
     * Regulatory Requirements
     * Technology Stack
 
-2. Define Relationships Types (Edges):
+2. Relationships Types (Edges):
     * Company -> operates in -> Industry
     * Company -> headquartered in -> Location
     * Company -> offers -> Product/Service
@@ -24,12 +24,14 @@ Your task is to analyze and structure information of companies into a knowledge 
     * Company -> competes with -> Competitor
     * Company -> owns -> Subsidiary
     * CEO -> leads -> Company
+
 3. Capture Dependencies & Impact:
     * How changes in regulatory requirements affect technology stack or product offerings.
     * How financial performance impacts strategic partnerships or market expansion.
     * How leadership changes influence company strategy.
+
 4. Output Format:
-    * Represent as a graph schema or triples (subject → predicate → object).
+    * Represent as a graph schema or triples (subject -> predicate -> object).
     * Example:
             IBM -> operates in -> IT Services  
             IBM -> headquartered in -> Böblingen  

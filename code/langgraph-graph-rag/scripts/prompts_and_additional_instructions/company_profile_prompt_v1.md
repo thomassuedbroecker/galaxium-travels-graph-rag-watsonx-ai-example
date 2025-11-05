@@ -69,7 +69,7 @@ Adhere to the rules strictly. Non-compliance will result in termination.
     * How financial performance impacts strategic partnerships or market expansion.
     * How leadership changes influence company strategy.
 4.  Example Output Format:
-    * Represent as a graph schema or triples (subject → predicate → object).
+    * Represent as a graph schema or triples (subject -> predicate -> object).
     * Example:
             IBM -> operates in -> IT Services  
             IBM -> headquartered in -> Böblingen  
