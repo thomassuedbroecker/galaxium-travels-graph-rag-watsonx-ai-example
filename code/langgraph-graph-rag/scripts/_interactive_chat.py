@@ -20,7 +20,7 @@ class InteractiveChat:
         self.stream = stream
 
         self.questions = ("Hi! How are you?",
-                          "Which relation has the Galaxium Travels company?",
+                          "Which relations does the Galaxium Travels company have?",
                           "What does the vision mention?",
                           "What does the mission statement mention?") if questions is None else questions
 
