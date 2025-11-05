@@ -43,7 +43,7 @@ Adhere to the rules strictly. Non-compliance will result in termination.
 
 ### Example Nodes and Relations Type definitions
 
-1. Identify Core Entities Labels for Nodes:
+1. Example Core Entities Labels for Nodes:
     * Company Name
     * Industry
     * Headquarters Location
@@ -55,7 +55,7 @@ Adhere to the rules strictly. Non-compliance will result in termination.
     * Regulatory Requirements
     * Technology Stack
 
-2. Define Relationships Types (Edges):
+2. Example Relationships Types (Edges):
     * Company -> operates in -> Industry
     * Company -> headquartered in -> Location
     * Company -> offers -> Product/Service
@@ -64,11 +64,11 @@ Adhere to the rules strictly. Non-compliance will result in termination.
     * Company -> competes with -> Competitor
     * Company -> owns -> Subsidiary
     * CEO -> leads -> Company
-3. Capture Dependencies & Impact:
+3.  Example Capture Dependencies & Impact:
     * How changes in regulatory requirements affect technology stack or product offerings.
     * How financial performance impacts strategic partnerships or market expansion.
     * How leadership changes influence company strategy.
-4. Output Format:
+4.  Example Output Format:
     * Represent as a graph schema or triples (subject → predicate → object).
     * Example:
             IBM -> operates in -> IT Services  

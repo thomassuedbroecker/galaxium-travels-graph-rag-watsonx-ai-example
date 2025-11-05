@@ -27,14 +27,14 @@ Output the result in a structured graph-compatible format that can be directly p
 langchain_experimental.llms.transformer_graph.TransformerGraph
 Use the following output format exactly:
 
-## Entities:
+## Example Entities:
 
 * Company: <Company Name>, Type: <TravelProvider|TravelPlatform|TourOperator|CorporateTravelService>, Region: <Primary Region>, Segment: <Customer Segment>, RevenueModel: <Brief Description>
 * Company: <Company Name>, Type: <...>, Region: <...>, Segment: <...>, RevenueModel: <...>
 * Partnership: <Company A> :left_right_arrow: <Company B>, Type: <SupplierRelationship|TechnologyIntegration|DistributionAgreement>
 * MarketOverlap: <Company A> :left_right_arrow: <Company B>, Region: <Region>
 
-## Relationships:
+## Example Relationships:
 (<Company A>) -[COMPETES_WITH]-> (<Company B>)
 (<Company A>) -[PARTNERS_WITH]-> (<Company B>)
 (<Company A>) -[OPERATES_IN]-> (<Region>)
